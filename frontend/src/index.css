@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pharmacy-50: #f0fdf4;
+  --color-pharmacy-100: #dcfce7;
+  --color-pharmacy-200: #bbf7d0;
+  --color-pharmacy-300: #86efac;
+  --color-pharmacy-400: #4ade80;
+  --color-pharmacy-500: #22c55e;
+  --color-pharmacy-600: #16a34a;
+  --color-pharmacy-700: #15803d;
+  --color-pharmacy-800: #166534;
+  --color-pharmacy-900: #14532d;
+}
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900 bg-gray-50;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom Scrollbar for sleek UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
