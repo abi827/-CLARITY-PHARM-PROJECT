@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { doctorAPI } from '../../services/api';
-import { Eye, Send } from 'lucide-react';
+import { Eye, Send, FilePlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PrescriptionDetailModal from '../../components/PrescriptionDetailModal';
 
 export default function MyPrescriptions() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPrescription, setSelectedPrescription] = useState<any>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   useEffect(() => {
     doctorAPI.listPrescriptions()
@@ -16,11 +19,16 @@ export default function MyPrescriptions() {
 
   const sendToPharmacy = async (id: string) => {
     try {
+      setSendingId(id);
       await doctorAPI.sendToPharmacy(id);
       setData(data.map(p => p.prescription_id === id ? { ...p, status: 'Sent to Pharmacy' } : p));
-      alert("Sent to pharmacy!");
+      if (selectedPrescription && selectedPrescription.prescription_id === id) {
+        setSelectedPrescription({ ...selectedPrescription, status: 'Sent to Pharmacy' });
+      }
     } catch (e) {
       alert("Failed to send.");
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -65,11 +73,20 @@ export default function MyPrescriptions() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
-                    <button className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg">
+                    <button 
+                      onClick={() => setSelectedPrescription(p)} 
+                      className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"
+                      title="View Details"
+                    >
                       <Eye className="w-4 h-4" />
                     </button>
                     {p.status === 'Draft' && (
-                      <button onClick={() => sendToPharmacy(p.prescription_id)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Send to Pharmacy">
+                      <button 
+                        onClick={() => sendToPharmacy(p.prescription_id)} 
+                        disabled={sendingId === p.prescription_id}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50" 
+                        title="Send to Pharmacy"
+                      >
                         <Send className="w-4 h-4" />
                       </button>
                     )}
@@ -80,6 +97,13 @@ export default function MyPrescriptions() {
           </tbody>
         </table>
       </div>
+
+      <PrescriptionDetailModal
+        prescription={selectedPrescription}
+        onClose={() => setSelectedPrescription(null)}
+        onSendToPharmacy={sendToPharmacy}
+        isSending={sendingId === selectedPrescription?.prescription_id}
+      />
     </div>
   );
 }

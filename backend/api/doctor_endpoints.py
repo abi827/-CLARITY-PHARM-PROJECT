@@ -7,7 +7,7 @@ These routes require authentication and enforce role = "Prescriber/Doctor".
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime, date
@@ -134,16 +134,28 @@ SYNTHETIC_PATIENT_IDS = [f"PAT-{str(i).zfill(4)}" for i in range(1, 51)]
 
 @router.get("/dashboard")
 def doctor_dashboard(
+    local_date: Optional[str] = None,
     db: Session = Depends(get_db),
     doctor: models.User = Depends(require_doctor)
 ):
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_utc_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_utc_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+    filter_conditions = [
+        models.Prescription.created_at >= today_utc_start,
+        func.date(models.Prescription.created_at) == today_utc_str,
+    ]
+    if local_date:
+        filter_conditions.append(func.date(models.Prescription.created_at) == local_date)
 
     # Today's prescriptions
-    todays_rx = db.query(models.Prescription).filter(
+    todays_rx_query = db.query(models.Prescription).filter(
         models.Prescription.doctor_id == doctor.id,
-        models.Prescription.created_at >= today_start
-    ).count()
+        or_(*filter_conditions)
+    ).order_by(models.Prescription.created_at.desc())
+
+    todays_rx_items = todays_rx_query.all()
+    todays_rx_count = len(todays_rx_items)
 
     # All prescriptions for this doctor
     all_rx = db.query(models.Prescription).filter(
@@ -181,7 +193,8 @@ def doctor_dashboard(
     return {
         "doctor_name": doctor.name,
         "doctor_email": doctor.email,
-        "todays_prescriptions": todays_rx,
+        "todays_prescriptions": todays_rx_count,
+        "todays_prescriptions_list": [_serialize_prescription(p) for p in todays_rx_items],
         "pending_clarifications": pending_clars,
         "sent_to_pharmacy": sent_to_pharmacy,
         "resolved": resolved,
@@ -259,8 +272,9 @@ def create_prescription(
     db.refresh(p)
 
     if status_val == "Sent to Pharmacy" and p.target_pharmacist_id is not None:
-        score = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
-        priority_level = priority_engine.score_to_priority(score, 0.70, 0.90)
+        score_data = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
+        score_val = float(score_data.get("score", 0.0)) if isinstance(score_data, dict) else float(score_data)
+        priority_level = priority_engine.score_to_priority(score_val, 0.70, 0.90)
         evidence = priority_engine.build_evidence_text(p.medicine_risk, 0, p.department, "Other")
 
         c_id = f"CLAR-{random.randint(10000, 99999)}"
@@ -285,9 +299,9 @@ def create_prescription(
 
         pred = models.PriorityPrediction(
             clarification_id=clar.id,
-            score=score,
+            score=score_val,
             priority_level=priority_level,
-            evidence_json=json.dumps({"reason": evidence, "contributions": {}})
+            evidence_json=json.dumps({"reason": evidence, "contributions": score_data.get("contributions", {}) if isinstance(score_data, dict) else {}})
         )
         db.add(pred)
         db.commit()
@@ -357,8 +371,9 @@ def send_prescription_to_pharmacy(
     db.commit()
 
     if p.target_pharmacist_id is not None:
-        score = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
-        priority_level = priority_engine.score_to_priority(score, 0.70, 0.90)
+        score_data = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
+        score_val = float(score_data.get("score", 0.0)) if isinstance(score_data, dict) else float(score_data)
+        priority_level = priority_engine.score_to_priority(score_val, 0.70, 0.90)
         evidence = priority_engine.build_evidence_text(p.medicine_risk, 0, p.department, "Other")
 
         c_id = f"CLAR-{random.randint(10000, 99999)}"
@@ -383,9 +398,9 @@ def send_prescription_to_pharmacy(
 
         pred = models.PriorityPrediction(
             clarification_id=clar.id,
-            score=score,
+            score=score_val,
             priority_level=priority_level,
-            evidence_json=json.dumps({"reason": evidence, "contributions": {}})
+            evidence_json=json.dumps({"reason": evidence, "contributions": score_data.get("contributions", {}) if isinstance(score_data, dict) else {}})
         )
         db.add(pred)
         db.commit()

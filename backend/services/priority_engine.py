@@ -17,17 +17,25 @@ DATA_PATH = os.path.join("data", "synthetic", "clarifications.csv")
 MODELS_DIR = "models"
 BEST_MODEL_PATH = os.path.join(MODELS_DIR, "best_model.pkl")
 
-MEDICINE_RISK_SCORE = {"Low": 0.25, "Medium": 0.60, "High": 1.00}
+MEDICINE_RISK_SCORE = {"Low": 0.25, "Medium": 0.60, "High": 1.00, "Critical": 1.50}
 DEPT_URGENCY_SCORE = {"Operating Room": 1.00, "Ward": 0.65, "Outpatient": 0.30}
 CLARIFICATION_SEVERITY = {
     "Drug interaction": 1.00, "Dose": 0.90, "Duplicate therapy": 0.85,
     "Route": 0.75, "Frequency": 0.70, "Missing information": 0.65,
-    "Duration": 0.55, "Formulation": 0.50, "Quantity": 0.35, "Other": 0.30
+    "Duration": 0.55, "Formulation": 0.50, "Quantity": 0.35, "Other": 0.30,
+    "Prescription Verification": 0.40, "Prescription Approved": 0.40
 }
 WEIGHTS = {"medicine_risk": 0.40, "waiting_time": 0.30, "department": 0.20, "clarification": 0.10}
 
 
-def score_to_priority(score: float, threshold_high: float = 0.70, threshold_critical: float = 0.90) -> str:
+def score_to_priority(score: any, threshold_high: float = 0.70, threshold_critical: float = 0.90) -> str:
+    if isinstance(score, dict):
+        score = score.get("score", 0.0)
+    if not isinstance(score, (int, float)):
+        try:
+            score = float(score)
+        except (ValueError, TypeError):
+            score = 0.0
     if score >= threshold_critical:
         return "CRITICAL"
     elif score >= threshold_high:
@@ -104,9 +112,17 @@ def load_model():
 
 
 def build_evidence_text(medicine_risk: str, waiting_time: int, department: str,
-                        clarification_type: str, score: float, priority: str) -> str:
+                        clarification_type: str, score: any = None, priority: str = None) -> str:
+    if priority is None:
+        if score is None:
+            res = baseline_score(medicine_risk, waiting_time, department, clarification_type)
+            score = res.get("score", 0.0)
+        priority = score_to_priority(score)
+
     parts = []
-    if medicine_risk == "High":
+    if medicine_risk == "Critical":
+        parts.append("critical-risk medication")
+    elif medicine_risk == "High":
         parts.append("high medicine risk")
     elif medicine_risk == "Medium":
         parts.append("medium medicine risk")

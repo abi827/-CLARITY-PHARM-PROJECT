@@ -220,7 +220,7 @@ def get_pharmacist_prescriptions(
 
     # Only for pharmacists to view incoming prescriptions
     prescriptions = db.query(models.Prescription).filter(
-        models.Prescription.status.in_(["Sent to Pharmacy", "Clarification Required", "Response Submitted", "Resolved"]),
+        models.Prescription.status.in_(["Sent to Pharmacy", "Clarification Required", "Response Submitted", "Resolved", "Approved"]),
         or_(models.Prescription.target_pharmacist_id == None, models.Prescription.target_pharmacist_id == current_user.id)
     ).order_by(models.Prescription.created_at.desc()).all()
     
@@ -237,6 +237,29 @@ def get_pharmacist_prescriptions(
             "created_at": p.created_at.isoformat() if p.created_at else None
         } for p in prescriptions
     ]
+
+
+@router.post("/prescriptions/{prescription_id}/approve")
+def approve_prescription(
+    prescription_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    p = db.query(models.Prescription).filter(models.Prescription.prescription_id == prescription_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Prescription not found")
+
+    p.status = "Approved"
+    
+    audit = models.AuditLog(
+        user_email=current_user.email, user_role=current_user.role,
+        action="PRESCRIPTION_APPROVED",
+        details=f"Prescription {p.prescription_id} approved directly"
+    )
+    db.add(audit)
+    db.commit()
+
+    return {"message": "Prescription approved successfully"}
 
 
 class PharmacistQuestionCreate(BaseModel):
@@ -368,7 +391,20 @@ def get_dashboard(db: Session = Depends(get_db), current_user: models.User = Dep
         "median_resolution_time_min": median_res,
         "high_risk_early_resolution_rate": hr_early_rate,
         "target_early_resolution_rate": 0.80,
-        "priority_distribution": [{"level": d[0], "count": d[1]} for d in dist]
+        "priority_distribution": [{"level": d[0], "count": d[1]} for d in dist],
+        # Prescription stats for pharmacist dashboard
+        "incoming_prescriptions": db.query(models.Prescription).filter(
+            models.Prescription.status.in_(["Sent to Pharmacy", "Clarification Required", "Response Submitted", "Resolved", "Approved"])
+        ).count(),
+        "pending_prescriptions": db.query(models.Prescription).filter(
+            models.Prescription.status == "Sent to Pharmacy"
+        ).count(),
+        "approved_prescriptions": db.query(models.Prescription).filter(
+            models.Prescription.status == "Approved"
+        ).count(),
+        "clarification_required": db.query(models.Prescription).filter(
+            models.Prescription.status == "Clarification Required"
+        ).count(),
     }
 
 

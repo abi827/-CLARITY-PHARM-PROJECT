@@ -33,6 +33,7 @@ export const clarAPI = {
 export const pharmacyRxAPI = {
   list: () => api.get('/prescriptions'),
   clarify: (id: string, question: string) => api.post(`/prescriptions/${id}/clarify`, { pharmacist_question: question }),
+  approve: (id: string) => api.post(`/prescriptions/${id}/approve`),
 }
 
 // Dashboard
@@ -85,7 +86,7 @@ export const modelAPI = {
 
 // Doctor API
 export const doctorAPI = {
-  dashboard: () => api.get('/doctor/dashboard'),
+  dashboard: (local_date?: string) => api.get('/doctor/dashboard', { params: local_date ? { local_date } : {} }),
   medicines: () => api.get('/doctor/medicines'),
   patientIds: () => api.get('/doctor/patient-ids'),
   createPrescription: (body: any) => api.post('/doctor/prescriptions', body),

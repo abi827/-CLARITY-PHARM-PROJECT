@@ -88,8 +88,12 @@ def signup(request: SignupRequest, db: Session = Depends(get_db)):
         details=f"New user registered: {request.name}"
     )
     db.add(audit)
-    db.commit()
-
+    # Seed demo data for new user
+    from ..services.seed import seed_user_data
+    try:
+        seed_user_data(user.id, user.email, user.role, db)
+    except Exception as e:
+        print(f"Error seeding user data: {e}")
 
     return {"message": "Account created successfully. Please sign in."}
 

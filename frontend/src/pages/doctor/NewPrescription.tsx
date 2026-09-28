@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { doctorAPI } from '../../services/api';
-import { useNavigate } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Activity, ArrowLeft } from 'lucide-react';
 
 export default function NewPrescription() {
   const navigate = useNavigate();
@@ -47,9 +47,16 @@ export default function NewPrescription() {
     }
     setLoading(true);
     try {
-      await doctorAPI.createPrescription({ ...form, action });
-      alert(`Prescription ${action === 'send' ? 'sent to pharmacy' : 'saved as draft'} successfully.`);
-      navigate(action === 'send' ? '/doctor/sent-to-pharmacy' : '/doctor/my-prescriptions');
+      const payload: any = { ...form, action };
+      if (payload.target_pharmacist_id === '') {
+        payload.target_pharmacist_id = null;
+      } else if (payload.target_pharmacist_id) {
+        payload.target_pharmacist_id = parseInt(payload.target_pharmacist_id, 10);
+      }
+
+      const res = await doctorAPI.createPrescription(payload);
+      const rxId = res.data?.prescription?.prescription_id || '';
+      navigate(`/doctor/dashboard?created=${rxId}&action=${action}`);
     } catch (err) {
       console.error(err);
       alert("Error creating prescription.");
@@ -60,6 +67,16 @@ export default function NewPrescription() {
 
   return (
     <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+      <div className="mb-6 flex items-center justify-between">
+        <Link
+          to="/doctor/dashboard"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-teal-600 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">New Prescription</h1>
         <p className="text-gray-500 mt-1">Create and send a prescription to the pharmacy.</p>

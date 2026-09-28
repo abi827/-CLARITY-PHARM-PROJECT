@@ -8,20 +8,20 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/priority-queue', label: 'Priority Queue', icon: ListChecks },
-  { path: '/clarifications', label: 'Clarifications', icon: FileText },
-  { path: '/patient-journeys', label: 'Patient Journeys', icon: Users },
-  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { path: '/experiments', label: 'Experiments', icon: FlaskConical },
-  { path: '/error-analysis', label: 'Error Analysis', icon: AlertOctagon },
-  { path: '/failure-cases', label: 'Failure Cases', icon: ShieldAlert },
-  { path: '/stakeholder-feedback', label: 'Stakeholder Feedback', icon: MessageSquare },
-  { path: '/documentation', label: 'Technical Docs', icon: BookOpen },
-  { path: '/responsible-ai', label: 'Responsible AI', icon: ShieldCheck },
-  { path: '/audit-log', label: 'Audit Log', icon: ScrollText },
-  { path: '/settings', label: 'Settings', icon: Settings },
-  { path: '/capstone', label: 'Capstone Summary', icon: Activity },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: null },
+  { path: '/priority-queue', label: 'Priority Queue', icon: ListChecks, roles: null },
+  { path: '/clarifications', label: 'Clarifications', icon: FileText, roles: null },
+  { path: '/patient-journeys', label: 'Patient Journeys', icon: Users, roles: null },
+  { path: '/analytics', label: 'Analytics', icon: BarChart2, roles: null },
+  { path: '/experiments', label: 'Experiments', icon: FlaskConical, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/error-analysis', label: 'Error Analysis', icon: AlertOctagon, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/failure-cases', label: 'Failure Cases', icon: ShieldAlert, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/stakeholder-feedback', label: 'Stakeholder Feedback', icon: MessageSquare, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/documentation', label: 'Technical Docs', icon: BookOpen, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/responsible-ai', label: 'Responsible AI', icon: ShieldCheck, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/audit-log', label: 'Audit Log', icon: ScrollText, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+  { path: '/settings', label: 'Settings', icon: Settings, roles: null },
+  { path: '/capstone', label: 'Capstone Summary', icon: Activity, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
-          {NAV.map(({ path, label, icon: Icon }) => {
+          {NAV.filter(({ roles }) => !roles || roles.includes(user?.role || '')).map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path
             return (
               <Link

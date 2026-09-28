@@ -180,22 +180,43 @@ export default function PriorityQueue() {
                   <td className="px-4 py-3 text-gray-600">{rx.department}</td>
                   <td className="px-4 py-3 text-gray-600">{rx.medicine} <RiskBadge risk={rx.medicine_risk} /></td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{rx.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      rx.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                      rx.status === 'Clarification Required' ? 'bg-orange-100 text-orange-700' :
+                      rx.status === 'Resolved' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>{rx.status}</span>
                   </td>
                   <td className="px-4 py-3">
                     {rx.status === 'Sent to Pharmacy' ? (
-                      <button onClick={() => {
-                        const q = prompt("Enter clarification question for doctor:");
-                        if (q) {
-                          pharmacyRxAPI.clarify(rx.prescription_id, q).then(() => {
-                            alert("Clarification requested!");
-                            load();
-                          }).catch(() => alert("Error"));
-                        }
-                      }}
-                      className="px-3 py-1 bg-orange-100 text-orange-700 font-semibold text-xs rounded hover:bg-orange-200">
-                        Ask Clarification
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => {
+                          const q = prompt("Enter clarification question for doctor:");
+                          if (q) {
+                            pharmacyRxAPI.clarify(rx.prescription_id, q).then(() => {
+                              alert("Clarification requested!");
+                              load();
+                            }).catch(() => alert("Error"));
+                          }
+                        }}
+                        className="px-3 py-1 bg-orange-100 text-orange-700 font-semibold text-xs rounded hover:bg-orange-200">
+                          Ask Clarification
+                        </button>
+                        <button onClick={() => {
+                          if (window.confirm(`Approve prescription ${rx.prescription_id}?`)) {
+                            pharmacyRxAPI.approve(rx.prescription_id).then(() => {
+                              load();
+                            }).catch(() => alert("Failed to approve prescription."));
+                          }
+                        }}
+                        className="px-3 py-1 bg-green-600 text-white font-semibold text-xs rounded hover:bg-green-700 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Approve
+                        </button>
+                      </div>
+                    ) : rx.status === 'Approved' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 font-semibold text-xs rounded-full">
+                        <CheckCircle className="w-3 h-3" /> Approved
+                      </span>
                     ) : (
                       <span className="text-xs text-gray-400">No Action</span>
                     )}
