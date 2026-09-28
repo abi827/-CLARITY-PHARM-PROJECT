@@ -7,21 +7,22 @@ import {
   Settings, LogOut, Activity, Bell, ChevronLeft, ChevronRight, Menu
 } from 'lucide-react'
 
-const NAV = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: null },
-  { path: '/priority-queue', label: 'Priority Queue', icon: ListChecks, roles: null },
-  { path: '/clarifications', label: 'Clarifications', icon: FileText, roles: null },
-  { path: '/patient-journeys', label: 'Patient Journeys', icon: Users, roles: null },
-  { path: '/analytics', label: 'Analytics', icon: BarChart2, roles: null },
-  { path: '/experiments', label: 'Experiments', icon: FlaskConical, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/error-analysis', label: 'Error Analysis', icon: AlertOctagon, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/failure-cases', label: 'Failure Cases', icon: ShieldAlert, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/stakeholder-feedback', label: 'Stakeholder Feedback', icon: MessageSquare, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/documentation', label: 'Technical Docs', icon: BookOpen, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/responsible-ai', label: 'Responsible AI', icon: ShieldCheck, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/audit-log', label: 'Audit Log', icon: ScrollText, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
-  { path: '/settings', label: 'Settings', icon: Settings, roles: null },
-  { path: '/capstone', label: 'Capstone Summary', icon: Activity, roles: ['Clinical Reviewer', 'Pharmacy Supervisor'] },
+interface NavItem {
+  path: string
+  label: string
+  icon: any
+  roles?: string[] | null
+}
+
+const NAV: NavItem[] = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/priority-queue', label: 'Priority Queue', icon: ListChecks },
+  { path: '/clarifications', label: 'Clarifications', icon: FileText },
+  { path: '/patient-journeys', label: 'Patient Journeys', icon: Users },
+  { path: '/analytics', label: 'Analytics', icon: BarChart2 },
+  { path: '/stakeholder-feedback', label: 'Stakeholder Feedback', icon: MessageSquare },
+  { path: '/audit-log', label: 'Audit Log', icon: ScrollText },
+  { path: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -141,10 +142,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-6 max-w-screen-2xl mx-auto">
-            {/* Safety banner */}
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700 font-medium">
-              ⚕️ AI prioritisation is decision-support only. A qualified pharmacist must review high-priority clarifications before action.
-            </div>
             {children}
           </div>
         </main>

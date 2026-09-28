@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { doctorAPI } from '../../services/api';
-import { Bell, BellOff, CheckCheck, AlertCircle, FileText, MessageSquare, CheckCircle, Info } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, AlertCircle, FileText, MessageSquare, CheckCircle, Info, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 type Notification = {
   id: number;
@@ -15,8 +16,12 @@ type Notification = {
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; bg: string; text: string; border: string }> = {
   clarification_requested: { icon: MessageSquare, bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100' },
+  clarification_request:   { icon: MessageSquare, bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100' },
   clarification_resolved:  { icon: CheckCircle,   bg: 'bg-green-50',  text: 'text-green-600',  border: 'border-green-100' },
+  resolved:                { icon: CheckCircle,   bg: 'bg-green-50',  text: 'text-green-600',  border: 'border-green-100' },
+  prescription_approved:   { icon: CheckCircle,   bg: 'bg-green-50',  text: 'text-green-600',  border: 'border-green-100' },
   prescription_updated:    { icon: FileText,       bg: 'bg-blue-50',   text: 'text-blue-600',   border: 'border-blue-100' },
+  response_received:       { icon: FileText,       bg: 'bg-teal-50',   text: 'text-teal-600',   border: 'border-teal-100' },
   default:                 { icon: Info,           bg: 'bg-gray-50',   text: 'text-gray-500',   border: 'border-gray-100' },
 };
 
@@ -158,7 +163,8 @@ export default function Notifications() {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
           {displayed.map(n => {
-            const cfg = TYPE_CONFIG[n.notification_type] || TYPE_CONFIG.default;
+            const key = (n.notification_type || '').toLowerCase();
+            const cfg = TYPE_CONFIG[key] || TYPE_CONFIG.default;
             const Icon = cfg.icon;
             return (
               <div
@@ -182,12 +188,30 @@ export default function Notifications() {
                     <span className="text-xs text-gray-400 shrink-0 mt-0.5">{timeAgo(n.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{n.message}</p>
-                  <div className="flex items-center gap-4 mt-2">
+                  <div className="flex flex-wrap items-center gap-4 mt-2.5">
                     {n.prescription_id && (
                       <span className="text-xs text-gray-400 font-mono">Rx: {n.prescription_id}</span>
                     )}
                     {n.clarification_id && (
                       <span className="text-xs text-gray-400 font-mono">Clar: {n.clarification_id}</span>
+                    )}
+                    {n.clarification_id && (
+                      <Link
+                        to="/doctor/clarification-requests"
+                        className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700 font-semibold hover:underline"
+                      >
+                        <span>Respond to Clarification</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    )}
+                    {!n.clarification_id && n.prescription_id && (
+                      <Link
+                        to="/doctor/resolved"
+                        className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-semibold hover:underline"
+                      >
+                        <span>View in Prescriptions</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
                     )}
                     {!n.is_read && (
                       <button

@@ -72,20 +72,12 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-500">Check CRITICAL and HIGH requests</p>
               </div>
             </button>
-            <button onClick={() => navigate('/experiments')}
+            <button onClick={() => navigate('/analytics')}
               className="w-full flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors text-left">
               <TrendingUp className="w-5 h-5 text-blue-500 shrink-0" />
               <div>
-                <p className="font-semibold text-gray-900 text-sm">Run Model Experiment</p>
-                <p className="text-xs text-gray-500">Compare baseline vs ML models</p>
-              </div>
-            </button>
-            <button onClick={() => navigate('/capstone')}
-              className="w-full flex items-center gap-3 p-4 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-colors text-left">
-              <Target className="w-5 h-5 text-green-500 shrink-0" />
-              <div>
-                <p className="font-semibold text-gray-900 text-sm">View Capstone Summary</p>
-                <p className="text-xs text-gray-500">Full project results and findings</p>
+                <p className="font-semibold text-gray-900 text-sm">Performance Analytics</p>
+                <p className="text-xs text-gray-500">Review resolution metrics & trends</p>
               </div>
             </button>
           </div>

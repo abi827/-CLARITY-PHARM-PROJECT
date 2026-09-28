@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { doctorAPI } from '../../services/api';
-import { MessageSquare, Check, X } from 'lucide-react';
+import { MessageSquare, Check, X, Eye, FileText } from 'lucide-react';
+import PrescriptionDetailModal from '../../components/PrescriptionDetailModal';
 
 export default function ClarificationRequests() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [respondingTo, setRespondingTo] = useState<number | null>(null);
   const [responseText, setResponseText] = useState('');
+  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [selectedRx, setSelectedRx] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -18,6 +21,15 @@ export default function ClarificationRequests() {
       .then(res => setData(res.data.filter((c: any) => c.status !== 'Resolved')))
       .catch(console.error)
       .finally(() => setLoading(false));
+  };
+
+  const openRxModal = async (rxId: string) => {
+    try {
+      const res = await doctorAPI.getPrescription(rxId);
+      setSelectedRx(res.data);
+    } catch {
+      alert("Could not load prescription details.");
+    }
   };
 
   const handleRespond = async (id: number) => {
@@ -33,31 +45,67 @@ export default function ClarificationRequests() {
     }
   };
 
+  const displayed = filter === 'pending'
+    ? data.filter(c => !c.doctor_response)
+    : data;
+
+  const pendingCount = data.filter(c => !c.doctor_response).length;
+
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Clarification Requests</h1>
-        <p className="text-gray-500 mt-1">Respond to queries from the pharmacy.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Clarification Requests</h1>
+          <p className="text-gray-500 mt-1">Review and respond to clinical queries from the pharmacy.</p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setFilter('pending')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            Pending ({pendingCount})
+          </button>
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            All Requests ({data.length})
+          </button>
+        </div>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
-      ) : data.length === 0 ? (
+        <p className="text-gray-500">Loading clarification requests...</p>
+      ) : displayed.length === 0 ? (
         <div className="bg-white p-8 rounded-2xl border text-center text-gray-500">
-          No pending clarification requests.
+          {filter === 'pending' ? 'No pending clarification requests awaiting your response.' : 'No clarification requests found.'}
         </div>
       ) : (
-        data.map(c => (
+        displayed.map(c => (
           <div key={c.id} className="bg-white rounded-2xl border shadow-sm p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full mb-2 inline-block">
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full mb-2 inline-block ${
+                  c.status === 'Response Submitted' ? 'bg-teal-100 text-teal-800' : 'bg-orange-100 text-orange-800'
+                }`}>
                   {c.status}
                 </span>
                 <h3 className="text-lg font-bold text-gray-900">{c.clarification_id}</h3>
-                <p className="text-sm text-gray-500">Prescription: {c.prescription_id} | Patient: {c.patient_id}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-sm text-gray-500">
+                    Rx: <strong className="text-gray-700 font-mono">{c.prescription_id}</strong> · Patient: <strong className="text-gray-700">{c.patient_id}</strong> · Med: <strong className="text-gray-700">{c.medicine || c.medicine_category}</strong>
+                  </span>
+                  {c.prescription_id && (
+                    <button
+                      onClick={() => openRxModal(c.prescription_id)}
+                      className="inline-flex items-center gap-1 text-xs text-teal-700 hover:text-teal-800 font-semibold bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md hover:bg-teal-100 transition"
+                    >
+                      <Eye className="w-3 h-3" /> View Rx Details
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="text-right text-sm text-gray-500">
+              <div className="text-right text-xs text-gray-400">
                 {c.created_at ? new Date(c.created_at).toLocaleString() : ''}
               </div>
             </div>
@@ -102,6 +150,11 @@ export default function ClarificationRequests() {
           </div>
         ))
       )}
+
+      <PrescriptionDetailModal
+        prescription={selectedRx}
+        onClose={() => setSelectedRx(null)}
+      />
     </div>
   );
 }

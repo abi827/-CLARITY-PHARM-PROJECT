@@ -7,6 +7,7 @@ export default function NewPrescription() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<string[]>([]);
   const [medicines, setMedicines] = useState<{name: string, risk: string}[]>([]);
+  const [pharmacists, setPharmacists] = useState<{id: number, name: string, email: string}[]>([]);
   
   const [form, setForm] = useState({
     patient_id: '',
@@ -28,6 +29,7 @@ export default function NewPrescription() {
   useEffect(() => {
     doctorAPI.patientIds().then(res => setPatients(res.data)).catch(console.error);
     doctorAPI.medicines().then(res => setMedicines(res.data)).catch(console.error);
+    doctorAPI.pharmacists().then(res => setPharmacists(res.data)).catch(console.error);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -160,9 +162,21 @@ export default function NewPrescription() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Additional Notes</label>
               <textarea name="additional_notes" value={form.additional_notes} onChange={handleChange} placeholder="Optional notes for pharmacy" rows={3} className="w-full border-gray-300 rounded-xl p-2.5 bg-white border focus:ring-teal-500 focus:border-teal-500"></textarea>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pharmacist ID (Optional)</label>
-              <input type="number" name="target_pharmacist_id" value={form.target_pharmacist_id} onChange={handleChange} placeholder="e.g., 2" className="w-full border-gray-300 rounded-xl p-2.5 bg-white border focus:ring-teal-500 focus:border-teal-500" />
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assign to Pharmacist (Optional)</label>
+              <select
+                name="target_pharmacist_id"
+                value={form.target_pharmacist_id}
+                onChange={handleChange}
+                className="w-full border-gray-300 rounded-xl p-2.5 bg-gray-50 border focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">General Pharmacy Pool (Any available pharmacist)</option>
+                {pharmacists.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.email})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </section>

@@ -11,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   signup: (data: any) => Promise<void>
   logout: () => void
   loading: boolean
@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData))
     setToken(access_token)
     setUser(userData)
+    return userData
   }
 
   const signup = async (data: any) => {

@@ -43,6 +43,8 @@ class ClarificationRequest(Base):
     
     # NEW: link back to a Doctor's prescription (nullable — existing data unaffected)
     prescription_db_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=True)
+    medicine_name = Column(String, nullable=True)
+    dose = Column(String, nullable=True)
     pharmacist_question = Column(Text, nullable=True)  # Question Pharmacist sends to Doctor
     doctor_response = Column(Text, nullable=True)       # Doctor's answer
 

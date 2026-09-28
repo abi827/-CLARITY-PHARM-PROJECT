@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { clarAPI } from '../services/api'
-import { ArrowLeft, ShieldAlert, Clock, AlertTriangle, CheckCircle, XCircle, ChevronUp, Info } from 'lucide-react'
+import { ArrowLeft, ShieldAlert, Clock, AlertTriangle, CheckCircle, XCircle, ChevronUp, Info, FileText, MessageSquare } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useAuth } from '../context/AuthContext'
 
@@ -83,14 +83,16 @@ export default function ClarificationDetail({ id, onBack }: { id: number; onBack
               <PBadge level={data.priority_level} />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
+                ['Medicine', data.medicine_name || data.medicine_category || '—'],
+                ['Dose', data.dose || '—'],
                 ['Department', data.department],
-                ['Medicine Category', data.medicine_category],
                 ['Medicine Risk', data.medicine_risk],
                 ['Waiting Time', `${data.waiting_time_minutes} minutes`],
                 ['Clarification Type', data.clarification_type],
                 ['Status', data.status],
+                ['Urgency', data.urgency || 'Standard'],
               ].map(([label, value]) => (
                 <div key={label} className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500 font-medium">{label}</p>
@@ -99,6 +101,76 @@ export default function ClarificationDetail({ id, onBack }: { id: number; onBack
               ))}
             </div>
           </div>
+
+          {/* Linked Prescription & Doctor Communication */}
+          {(data.linked_prescription || data.pharmacist_question || data.doctor_response) && (
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  <h3 className="text-base font-bold text-gray-900">Linked Prescription & Prescriber Q&A</h3>
+                </div>
+                {data.linked_prescription && (
+                  <span className="font-mono text-xs px-2.5 py-1 bg-green-50 text-green-800 rounded-lg font-bold border border-green-200">
+                    {data.linked_prescription.prescription_id}
+                  </span>
+                )}
+              </div>
+
+              {data.linked_prescription && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl text-xs">
+                  <div>
+                    <span className="text-gray-400 font-medium block">Medicine</span>
+                    <span className="font-bold text-gray-800 text-sm">{data.linked_prescription.medicine}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block">Dose / Frequency</span>
+                    <span className="font-semibold text-gray-800">{data.linked_prescription.dose} · {data.linked_prescription.frequency || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block">Route / Urgency</span>
+                    <span className="font-semibold text-gray-800">{data.linked_prescription.route || 'Oral'} ({data.linked_prescription.urgency})</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-medium block">Prescriber</span>
+                    <span className="font-semibold text-gray-800">Dr. {data.linked_prescription.doctor_name || 'Prescriber'}</span>
+                  </div>
+                  {data.linked_prescription.instructions && (
+                    <div className="col-span-2 sm:col-span-4 mt-1 pt-2 border-t border-gray-200">
+                      <span className="text-gray-400 font-medium">Clinical Instructions: </span>
+                      <span className="text-gray-700 italic">{data.linked_prescription.instructions}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Q&A Thread */}
+              <div className="space-y-3">
+                {data.pharmacist_question && (
+                  <div className="p-3.5 bg-orange-50 border border-orange-200 rounded-xl">
+                    <p className="text-[11px] font-bold text-orange-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" /> Pharmacist Clarification Request
+                    </p>
+                    <p className="text-sm text-gray-800 italic">"{data.pharmacist_question}"</p>
+                  </div>
+                )}
+
+                {data.doctor_response ? (
+                  <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-xl">
+                    <p className="text-[11px] font-bold text-teal-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-teal-600" /> Prescriber Clarification Response
+                    </p>
+                    <p className="text-sm text-gray-900 font-medium">"{data.doctor_response}"</p>
+                  </div>
+                ) : data.pharmacist_question ? (
+                  <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl flex items-center gap-2 text-gray-500 text-xs">
+                    <Clock className="w-4 h-4 text-orange-500 animate-pulse" />
+                    <span>Awaiting doctor response to this clarification request.</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
 
           {/* Evidence / Explainability */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">

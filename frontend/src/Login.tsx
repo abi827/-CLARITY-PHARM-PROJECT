@@ -16,8 +16,12 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
-      navigate('/dashboard')
+      const u = await login(email, password)
+      if (u?.role === 'Prescriber/Doctor' || u?.role === 'Doctor' || u?.role === 'Prescriber') {
+        navigate('/doctor/dashboard')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Invalid email or password.')
     } finally {

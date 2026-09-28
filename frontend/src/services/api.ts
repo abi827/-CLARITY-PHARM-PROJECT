@@ -98,6 +98,7 @@ export const doctorAPI = {
   listNotifications: () => api.get('/doctor/notifications'),
   markNotifRead: (id: number) => api.patch(`/doctor/notifications/${id}/read`),
   markAllNotifsRead: () => api.patch('/doctor/notifications/read-all'),
+  pharmacists: () => api.get('/doctor/pharmacists'),
 }
 
 export default api

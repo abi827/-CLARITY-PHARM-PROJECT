@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -17,11 +17,25 @@ const NAV = [
   { path: '/doctor/profile', label: 'Profile', icon: UserIcon },
 ]
 
+import { doctorAPI } from '../services/api'
+
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [pendingClars, setPendingClars] = useState(0)
+  const [unreadNotifs, setUnreadNotifs] = useState(0)
+
+  useEffect(() => {
+    // Fetch live counts for badges
+    doctorAPI.dashboard().then(res => {
+      if (res.data) {
+        setPendingClars(res.data.pending_clarifications || 0)
+        setUnreadNotifs(res.data.unread_notifications || 0)
+      }
+    }).catch(() => {})
+  }, [location.pathname])
 
   const initial = user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '?'
 
@@ -51,6 +65,9 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
         <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
           {NAV.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path
+            const badgeCount = path === '/doctor/clarification-requests' ? pendingClars : path === '/doctor/notifications' ? unreadNotifs : 0
+            const badgeColor = path === '/doctor/clarification-requests' ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-700'
+
             return (
               <Link
                 key={path}
@@ -62,8 +79,22 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-teal-600' : ''}`} />
-                {!collapsed && <span className="truncate">{label}</span>}
+                <div className="relative">
+                  <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-teal-600' : ''}`} />
+                  {collapsed && badgeCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
+                  )}
+                </div>
+                {!collapsed && (
+                  <>
+                    <span className="truncate flex-1">{label}</span>
+                    {badgeCount > 0 && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badgeColor}`}>
+                        {badgeCount}
+                      </span>
+                    )}
+                  </>
+                )}
               </Link>
             )
           })}
@@ -111,12 +142,6 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Synthetic Data Banner */}
-            <div className="hidden sm:flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full text-xs font-medium text-amber-700">
-              <Activity className="w-3.5 h-3.5" />
-              DEMO / SYNTHETIC DATA
-            </div>
-
             <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full relative" onClick={() => navigate('/doctor/notifications')}>
               <Bell className="w-5 h-5" />
             </button>

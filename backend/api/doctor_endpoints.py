@@ -68,6 +68,8 @@ def _serialize_prescription(p: models.Prescription) -> dict:
         "instructions": p.instructions,
         "additional_notes": p.additional_notes,
         "status": p.status,
+        "target_pharmacist_id": p.target_pharmacist_id,
+        "target_pharmacist_name": p.target_pharmacist.name if p.target_pharmacist else None,
         "created_at": p.created_at.isoformat() if p.created_at else None,
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
     }
@@ -165,11 +167,11 @@ def doctor_dashboard(
     sent_to_pharmacy = all_rx.filter(
         models.Prescription.status.in_([
             "Sent to Pharmacy", "Under Review", "Clarification Required",
-            "Response Submitted", "Resolved"
+            "Response Submitted", "Resolved", "Approved"
         ])
     ).count()
 
-    resolved = all_rx.filter(models.Prescription.status == "Resolved").count()
+    resolved = all_rx.filter(models.Prescription.status.in_(["Resolved", "Approved"])).count()
 
     # Pending clarifications for this doctor (linked prescriptions with pharmacist question)
     pending_clars = db.query(models.ClarificationRequest).filter(
@@ -212,6 +214,17 @@ def get_medicines(doctor: models.User = Depends(require_doctor)):
 @router.get("/patient-ids")
 def get_patient_ids(doctor: models.User = Depends(require_doctor)):
     return SYNTHETIC_PATIENT_IDS
+
+
+@router.get("/pharmacists")
+def get_pharmacists(
+    db: Session = Depends(get_db),
+    doctor: models.User = Depends(require_doctor)
+):
+    pharmacists = db.query(models.User).filter(
+        models.User.role.in_(["Pharmacist", "Clinical Reviewer", "Pharmacy Supervisor"])
+    ).all()
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role} for u in pharmacists]
 
 
 # ─── Prescriptions ───────────────────────────────────────────────────────────
@@ -322,7 +335,10 @@ def list_prescriptions(
         models.Prescription.doctor_id == doctor.id
     )
     if status:
-        q = q.filter(models.Prescription.status == status)
+        if status == "Resolved":
+            q = q.filter(models.Prescription.status.in_(["Resolved", "Approved"]))
+        else:
+            q = q.filter(models.Prescription.status == status)
     items = q.order_by(models.Prescription.created_at.desc()).all()
     return [_serialize_prescription(p) for p in items]
 

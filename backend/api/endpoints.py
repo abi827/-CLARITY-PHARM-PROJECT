@@ -59,6 +59,8 @@ def get_clarifications(
             "department": item.department,
             "medicine_category": item.medicine_category,
             "medicine_risk": item.medicine_risk,
+            "medicine_name": item.medicine_name or (item.linked_prescription.medicine if item.linked_prescription else item.medicine_category),
+            "dose": item.dose or (item.linked_prescription.dose if item.linked_prescription else "Standard"),
             "waiting_time_minutes": item.waiting_time_minutes,
             "clarification_type": item.clarification_type,
             "urgency": item.urgency,
@@ -67,7 +69,10 @@ def get_clarifications(
             "priority_level": plevel,
             "priority_score": score,
             "evidence": evidence,
-            "created_at": item.created_at.isoformat() if item.created_at else None
+            "created_at": item.created_at.isoformat() if item.created_at else None,
+            "pharmacist_question": item.pharmacist_question,
+            "doctor_response": item.doctor_response,
+            "prescription_db_id": item.prescription_db_id
         })
 
     # Sort: CRITICAL first, then HIGH, MEDIUM, LOW
@@ -109,6 +114,28 @@ def get_clarification(
             "created_at": item.resolution.created_at.isoformat() if item.resolution.created_at else None
         }
 
+    linked_rx = None
+    if item.linked_prescription:
+        lp = item.linked_prescription
+        linked_rx = {
+            "id": lp.id,
+            "prescription_id": lp.prescription_id,
+            "doctor_name": lp.doctor_name,
+            "patient_id": lp.patient_id,
+            "department": lp.department,
+            "medicine": lp.medicine,
+            "medicine_risk": lp.medicine_risk,
+            "dose": lp.dose,
+            "frequency": lp.frequency,
+            "route": lp.route,
+            "duration": lp.duration,
+            "quantity": lp.quantity,
+            "instructions": lp.instructions,
+            "additional_notes": lp.additional_notes,
+            "status": lp.status,
+            "created_at": lp.created_at.isoformat() if lp.created_at else None,
+        }
+
     return {
         "id": item.id,
         "clarification_id": item.clarification_id,
@@ -117,6 +144,8 @@ def get_clarification(
         "department": item.department,
         "medicine_category": item.medicine_category,
         "medicine_risk": item.medicine_risk,
+        "medicine_name": item.medicine_name or (item.linked_prescription.medicine if item.linked_prescription else item.medicine_category),
+        "dose": item.dose or (item.linked_prescription.dose if item.linked_prescription else "Standard"),
         "waiting_time_minutes": item.waiting_time_minutes,
         "clarification_type": item.clarification_type,
         "urgency": item.urgency,
@@ -127,7 +156,11 @@ def get_clarification(
         "evidence": evidence,
         "reviews": reviews,
         "resolution": resolution,
-        "created_at": item.created_at.isoformat() if item.created_at else None
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "pharmacist_question": item.pharmacist_question,
+        "doctor_response": item.doctor_response,
+        "prescription_db_id": item.prescription_db_id,
+        "linked_prescription": linked_rx
     }
 
 
@@ -199,6 +232,19 @@ def resolve_clarification(
     db.add(res)
     item.status = "Resolved"
 
+    if item.prescription_db_id:
+        linked_p = db.query(models.Prescription).filter(models.Prescription.id == item.prescription_db_id).first()
+        if linked_p:
+            linked_p.status = "Resolved"
+            db.add(models.DoctorNotification(
+                doctor_id=linked_p.doctor_id,
+                notification_type="RESOLVED",
+                title="CLARIFICATION RESOLVED",
+                message=f"Pharmacy resolved clarification for prescription: {linked_p.prescription_id}. Outcome: {body.outcome}",
+                prescription_id=linked_p.prescription_id,
+                clarification_id=item.clarification_id
+            ))
+
     audit = models.AuditLog(
         user_email=current_user.email, user_role=current_user.role,
         clarification_id=item.clarification_id, action="RESOLVED",
@@ -233,8 +279,24 @@ def get_pharmacist_prescriptions(
             "department": p.department,
             "medicine": p.medicine,
             "medicine_risk": p.medicine_risk,
+            "dose": p.dose,
+            "frequency": p.frequency,
+            "route": p.route,
+            "duration": p.duration,
+            "quantity": p.quantity,
+            "instructions": p.instructions,
+            "additional_notes": p.additional_notes,
             "status": p.status,
-            "created_at": p.created_at.isoformat() if p.created_at else None
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+            "clarifications": [
+                {
+                    "id": c.id,
+                    "clarification_id": c.clarification_id,
+                    "pharmacist_question": c.pharmacist_question,
+                    "doctor_response": c.doctor_response,
+                    "status": c.status
+                } for c in p.clarifications
+            ]
         } for p in prescriptions
     ]
 
@@ -250,7 +312,20 @@ def approve_prescription(
         raise HTTPException(status_code=404, detail="Prescription not found")
 
     p.status = "Approved"
+
+    # Also resolve any linked clarifications
+    for clar in p.clarifications:
+        if clar.status != "Resolved":
+            clar.status = "Resolved"
     
+    db.add(models.DoctorNotification(
+        doctor_id=p.doctor_id,
+        notification_type="RESOLVED",
+        title="PRESCRIPTION APPROVED",
+        message=f"Pharmacy has approved prescription: {p.prescription_id}",
+        prescription_id=p.prescription_id
+    ))
+
     audit = models.AuditLog(
         user_email=current_user.email, user_role=current_user.role,
         action="PRESCRIPTION_APPROVED",
@@ -281,8 +356,9 @@ def create_clarification_from_prescription(
     c_id = f"CLAR-{random.randint(10000, 99999)}"
 
     # Call AI priority engine
-    score = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
-    priority_level = priority_engine.score_to_priority(score, 0.70, 0.90)
+    score_data = priority_engine.baseline_score(p.medicine_risk, 0, p.department, "Other")
+    score_val = float(score_data.get("score", 0.0)) if isinstance(score_data, dict) else float(score_data)
+    priority_level = priority_engine.score_to_priority(score_val, 0.70, 0.90)
     evidence = priority_engine.build_evidence_text(p.medicine_risk, 0, p.department, "Other")
 
     clar = models.ClarificationRequest(
@@ -306,9 +382,9 @@ def create_clarification_from_prescription(
 
     pred = models.PriorityPrediction(
         clarification_id=clar.id,
-        score=score,
+        score=score_val,
         priority_level=priority_level,
-        evidence_json=json.dumps({"reason": evidence, "contributions": {}})
+        evidence_json=json.dumps({"reason": evidence, "contributions": score_data.get("contributions", {}) if isinstance(score_data, dict) else {}})
     )
     db.add(pred)
 
